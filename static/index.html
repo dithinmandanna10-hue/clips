@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>clips — long-form → shorts</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header>
+  <div class="brand">✂️ clips</div>
+  <div class="tagline">turn long-form YouTube videos into shorts</div>
+</header>
+
+<main>
+  <!-- STEP 1: source -->
+  <section class="card" id="source-card">
+    <h2><span class="step">1</span> Add a video</h2>
+    <div class="row">
+      <input type="url" id="url-input"
+             placeholder="https://www.youtube.com/watch?v=…" />
+      <button id="analyze-btn" class="primary">Analyze</button>
+    </div>
+    <div class="row sub">
+      <label class="file-label">
+        …or upload a video file
+        <input type="file" id="file-input" accept="video/*" hidden />
+      </label>
+      <span class="hint">uploaded files get fixed-interval clips (no transcript)</span>
+    </div>
+    <div id="source-error" class="error" hidden></div>
+    <div id="analyze-progress" class="progress" hidden>
+      <div class="bar"><div class="fill"></div></div>
+      <span class="msg">fetching metadata &amp; transcript…</span>
+    </div>
+  </section>
+
+  <!-- STEP 2: clips -->
+  <section class="card" id="clips-card" hidden>
+    <h2><span class="step">2</span> Pick your clips</h2>
+    <div class="video-meta">
+      <img id="thumb" alt="" hidden />
+      <div class="meta-text">
+        <div id="video-title" class="video-title"></div>
+        <div id="video-sub" class="video-sub"></div>
+      </div>
+    </div>
+
+    <div class="row controls">
+      <label>clip length
+        <select id="clip-len">
+          <option value="15">~15s</option>
+          <option value="30" selected>~30s</option>
+          <option value="45">~45s</option>
+          <option value="60">~60s</option>
+        </select>
+      </label>
+      <label># clips
+        <select id="clip-count">
+          <option>4</option><option selected>6</option><option>8</option>
+        </select>
+      </label>
+      <button id="resuggest-btn" class="ghost">↻ re-detect highlights</button>
+      <button id="add-clip-btn" class="ghost">＋ manual clip</button>
+    </div>
+
+    <div id="clips-list"></div>
+
+    <div class="row" id="render-row">
+      <label class="check">
+        <input type="checkbox" id="captions-toggle" checked />
+        burn in captions
+      </label>
+      <label class="check">
+        <input type="checkbox" id="facecam-toggle" checked />
+        facecam window (top-right)
+      </label>
+      <label>cam size
+        <input type="range" id="cam-size" min="18" max="45" value="30" />
+      </label>
+      <span id="cam-size-val" class="hint">30%</span>
+      <div class="spacer"></div>
+      <button id="render-btn" class="primary big">🎬 Render shorts</button>
+    </div>
+    <div id="render-error" class="error" hidden></div>
+    <div id="prepare-progress" class="progress" hidden>
+      <div class="bar"><div class="fill"></div></div>
+      <span class="msg"></span>
+    </div>
+  </section>
+
+  <!-- STEP 3: render progress -->
+  <section class="card" id="render-card" hidden>
+    <h2><span class="step">3</span> Rendering</h2>
+    <div id="render-progress" class="progress">
+      <div class="bar"><div class="fill"></div></div>
+      <span class="msg"></span>
+    </div>
+    <div id="render-results" class="results"></div>
+    <div class="row" id="done-row" hidden>
+      <button id="download-all" class="ghost">⬇ download all</button>
+      <button id="restart" class="ghost">↺ start over</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  local tool · source video + highlights stay in <code>data/</code>,
+  finished shorts land in <code>outputs/</code>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
