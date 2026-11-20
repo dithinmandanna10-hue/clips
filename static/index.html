@@ -26,7 +26,11 @@
         …or upload a video file
         <input type="file" id="file-input" accept="video/*" hidden />
       </label>
-      <span class="hint">uploaded files get fixed-interval clips (no transcript)</span>
+      <label class="file-label alt" title="optional .vtt / .srt / .json3 — enables auto highlight detection">
+        + captions file <span class="hint">(optional)</span>
+        <input type="file" id="subs-input" accept=".vtt,.srt,.json3,.ass" hidden />
+      </label>
+      <span class="hint" id="subs-name">no captions file — fixed-interval clips</span>
     </div>
     <div id="source-error" class="error" hidden></div>
     <div id="analyze-progress" class="progress" hidden>

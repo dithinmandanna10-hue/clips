@@ -85,6 +85,8 @@ async function uploadFile(file) {
   try {
     const fd = new FormData();
     fd.append("file", file);
+    const subs = $("subs-input").files && $("subs-input").files[0];
+    if (subs) fd.append("subs", subs);
     const r = await fetch("/api/upload", { method: "POST", body: fd });
     const data = await r.json();
     if (!r.ok) throw new Error(data.detail || `upload failed (${r.status})`);
@@ -369,6 +371,12 @@ $("file-input").addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
   if (f) uploadFile(f);
   e.target.value = "";
+});
+$("subs-input").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  $("subs-name").textContent = f
+    ? f.name
+    : "no captions file — fixed-interval clips";
 });
 $("resuggest-btn").addEventListener("click", resuggest);
 $("add-clip-btn").addEventListener("click", addManual);

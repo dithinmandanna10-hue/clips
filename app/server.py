@@ -19,6 +19,7 @@ from .facecam import Rect, detect_facecam
 from .ffmpeg_utils import probe
 from .highlights import find_highlights
 from .render import render_clip
+from .transcript import Segment, parse_any
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -126,7 +127,18 @@ def api_analyze(req: AnalyzeReq):
         meta = fetch_meta(url, str(_session_dir(sid)))
     except Exception as e:
         shutil.rmtree(DATA / sid, ignore_errors=True)
-        raise HTTPException(400, f"could not fetch video: {e}")
+        msg = str(e)
+        if any(s in msg for s in ("TLS/SSL", "SSL Error", "Connection refused",
+                                  "Network is unreachable", "Failed to resolve",
+                                  "unable to download", "timed out")):
+            raise HTTPException(
+                400,
+                "YouTube is unreachable from this environment (network "
+                "restriction). Options: run the app on your own machine where "
+                "YouTube is accessible (see README quick start), or upload "
+                "the video file instead — uploads work everywhere.",
+            )
+        raise HTTPException(400, f"could not fetch video: {msg}")
 
     duration = meta.duration
     clips = find_highlights(meta.segments, duration, clip_len=30.0, count=6)
@@ -166,7 +178,7 @@ def api_analyze(req: AnalyzeReq):
 
 
 @app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...)):
+async def api_upload(file: UploadFile = File(...), subs: UploadFile | None = File(None)):
     sid = uuid.uuid4().hex[:12]
     sdir = _session_dir(sid)
     suffix = Path(file.filename or "video.mp4").suffix or ".mp4"
@@ -182,23 +194,48 @@ async def api_upload(file: UploadFile = File(...)):
         raise HTTPException(400, f"cannot read video: {e}")
 
     duration = info["duration"]
-    # fixed-interval suggestions when there's no transcript
-    step = 30.0
-    suggested = []
-    t = 0.0
-    while t + 10.0 <= duration and len(suggested) < 8:
-        end = min(t + step, duration)
-        if end - t >= 10.0:
-            suggested.append({
-                "start": round(t, 2), "end": round(end, 2), "score": 0.0,
-                "text": "", "reasons": ["fixed interval (no transcript)"],
-            })
-        t += step
-    if not suggested and duration >= 5:
-        suggested = [{
-            "start": 0.0, "end": round(min(duration, 30.0), 2), "score": 0.0,
-            "text": "", "reasons": ["whole video"],
-        }]
+
+    # optional subtitles file (vtt/srt/json3) enables transcript highlights
+    segments: list[Segment] = []
+    transcript_source = ""
+    if subs is not None and subs.filename:
+        raw = (await subs.read()).decode("utf-8", errors="replace")
+        try:
+            segments = parse_any(raw, subs.filename)
+        except Exception as e:
+            raise HTTPException(400, f"cannot parse subtitles: {e}")
+        transcript_source = "manual" if segments else ""
+
+    if segments:
+        found = find_highlights(segments, duration, clip_len=30.0, count=6)
+        suggested = [
+            {
+                "start": round(c.start, 2),
+                "end": round(c.end, 2),
+                "score": c.score,
+                "text": c.text,
+                "reasons": c.reasons,
+            }
+            for c in found
+        ]
+    else:
+        # fixed-interval suggestions when there's no transcript
+        step = 30.0
+        suggested = []
+        t = 0.0
+        while t + 10.0 <= duration and len(suggested) < 8:
+            end = min(t + step, duration)
+            if end - t >= 10.0:
+                suggested.append({
+                    "start": round(t, 2), "end": round(end, 2), "score": 0.0,
+                    "text": "", "reasons": ["fixed interval (no transcript)"],
+                })
+            t += step
+        if not suggested and duration >= 5:
+            suggested = [{
+                "start": 0.0, "end": round(min(duration, 30.0), 2), "score": 0.0,
+                "text": "", "reasons": ["whole video"],
+            }]
 
     SESSIONS[sid] = {
         "id": sid,
@@ -208,8 +245,8 @@ async def api_upload(file: UploadFile = File(...)):
         "duration": duration,
         "thumbnail": "",
         "uploader": "",
-        "segments": [],
-        "transcript_source": "",
+        "segments": segments,
+        "transcript_source": transcript_source,
         "source_path": str(dest),
         "facecam": None,
         "suggested": suggested,
@@ -220,8 +257,8 @@ async def api_upload(file: UploadFile = File(...)):
         "duration": duration,
         "thumbnail": "",
         "uploader": "",
-        "transcript_source": "",
-        "segment_count": 0,
+        "transcript_source": transcript_source,
+        "segment_count": len(segments),
         "suggested": suggested,
     }
 

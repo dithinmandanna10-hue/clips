@@ -20,8 +20,17 @@ Open http://localhost:8000
 ## How it works
 
 **1. Analyze** — `yt-dlp` fetches metadata plus the best available subtitles
-(manual captions preferred, auto-captions as fallback). Uploaded files skip
-this and get fixed-interval clip suggestions instead.
+(manual captions preferred, auto-captions as fallback). Uploaded files can
+pair with an optional captions file (`.vtt`/`.srt`/`.json3`) to get the same
+transcript-driven highlights; without one, uploads get fixed-interval
+suggestions instead.
+
+> **Blocked from YouTube?** Some sandboxes/office networks block YouTube at
+> the TLS layer — the app detects this and tells you. Workaround: on a
+> machine with YouTube access run
+> `yt-dlp -f "bv*[height<=1080]+ba/b" -o video.mp4 --write-subs --write-auto-subs --sub-langs en.* <url>`
+> then upload `video.mp4` (+ the downloaded `.vtt`) here. Everything —
+> highlight detection, facecam placement, captions, rendering — works offline.
 
 **2. Highlight detection** (`app/highlights.py`) — a heuristic scorer slides
 ~30s windows over the transcript and scores them on:
